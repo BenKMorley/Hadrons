@@ -48,7 +48,7 @@ class ScalarActionParameters: Serializable
 {
 public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(ScalarActionParameters,
-                                    double, mass_squared,
+                                    double, m2,
                                     double, lambda,
                                     double, g);
 };
@@ -132,7 +132,7 @@ void TLoadCosmHol<SImpl>::execute(void)
                  << std::endl;
     LOG(Message) << "Configuration parameters:" << std::endl;
     LOG(Message) << "     N = " << N << std::endl;
-    LOG(Message) << "   m^2 = " << md.mass_squared << std::endl;
+    LOG(Message) << "   m^2 = " << md.m2 << std::endl;
     LOG(Message) << "lambda = " << md.lambda << std::endl;
     LOG(Message) << "     g = " << md.g << std::endl;
 }
