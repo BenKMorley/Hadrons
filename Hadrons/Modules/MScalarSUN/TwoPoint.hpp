@@ -152,6 +152,7 @@ template <typename SImpl>
 void TTwoPoint<SImpl>::execute(void)
 {
     LOG(Message) << "Computing 2-point functions" << std::endl;
+    LOG(Message) << "Computing 2-point functions" << std::endl;
     for (auto &p: par().op)
     {
         LOG(Message) << "  <" << p.first << " " << p.second << ">" << std::endl;
@@ -175,11 +176,20 @@ void TTwoPoint<SImpl>::execute(void)
     {
         partVol *= env().getDim()[mu];
     }
+
+    LOG(Message) << "Hello World" << std::endl;
+
     for (auto &p: par().op)
     {
         ops.insert(p.first);
         ops.insert(p.second);
+
+        LOG(Message) << "Hello World" << std::endl;
+
+        // auto &op1 = envGet(ComplexField, p.first);
+        // auto &op2 = envGet(ComplexField, p.second);
     }
+
     for (auto &o: ops)
     {
         auto &op = envGet(ComplexField, o);
