@@ -152,7 +152,6 @@ template <typename SImpl>
 void TTwoPoint<SImpl>::execute(void)
 {
     LOG(Message) << "Computing 2-point functions" << std::endl;
-    LOG(Message) << "Computing 2-point functions" << std::endl;
     for (auto &p: par().op)
     {
         LOG(Message) << "  <" << p.first << " " << p.second << ">" << std::endl;
@@ -177,19 +176,13 @@ void TTwoPoint<SImpl>::execute(void)
         partVol *= env().getDim()[mu];
     }
 
-    LOG(Message) << "Hello World" << std::endl;
-
+    // In order to not read in the same data multiple times, we make ops a set which covers all
+    // pairs of operators
     for (auto &p: par().op)
     {
         ops.insert(p.first);
         ops.insert(p.second);
-
-        LOG(Message) << "Hello World" << std::endl;
-
-        // auto &op1 = envGet(ComplexField, p.first);
-        // auto &op2 = envGet(ComplexField, p.second);
     }
-
     for (auto &o: ops)
     {
         auto &op = envGet(ComplexField, o);
@@ -199,6 +192,8 @@ void TTwoPoint<SImpl>::execute(void)
         fft.FFT_dim_mask(ftBuf, op, dMask, FFT::forward);
         for (unsigned int m = 0; m < nmom; ++m)
         {
+            // We've taken the FFT in the first two directions, so we pick the momentum to match
+            // for those two directions
             auto qt = mom_[m];
 
             qt.resize(nd);
@@ -206,6 +201,9 @@ void TTwoPoint<SImpl>::execute(void)
             for (unsigned int t = 0; t < nt; ++t)
             {
                 qt[nd - 1] = t;
+
+                // buf gets the value of Op(q1, q2, t), where the first two dimensions have been
+                // Fourier Transformed but the second one hasn't
                 peekSite(buf, ftBuf, qt);
                 slicedOp[o][m][t] = TensorRemove(buf);
             }
@@ -220,6 +218,9 @@ void TTwoPoint<SImpl>::execute(void)
         r.sink   = p.first;
         r.source = p.second;
         r.mom    = mom_[m];
+
+        // The two-point will produce an operator of the form C(q1, q2, dt)
+        // Note We've used here the q --> -q symmetry 
         r.data   = makeTwoPoint(slicedOp[p.first][m], slicedOp[p.second][m], 
                                 1./partVol);
         result.push_back(r);

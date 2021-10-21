@@ -26,6 +26,9 @@
 #ifndef Hadrons_MScalarSUN_Utils_hpp_
 #define Hadrons_MScalarSUN_Utils_hpp_
 
+#define PI           3.14159265358979323846
+
+
 #include <Hadrons/Global.hpp>
 #include <Hadrons/Module.hpp>
 
@@ -86,6 +89,97 @@ inline void dmuAcc(Field &out, const Field &in, const unsigned int mu, const Dif
             break;
     }
 }
+
+inline double WindowBeta(double a, double b, double r)
+{
+    if (r==a || r==b)
+    {
+        return 0.0;
+    } else 
+    {
+        return exp(-1.0/(r-a)-1.0/(b-r));
+    }
+}
+
+
+inline double trapezoidalIntegral(double a, double b, double r, int n, const std::function<double (double, double, double)> &f) {
+    const double width = (r-a)/n;
+
+    double trapezoidal_integral = 0;
+    for(int step = 0; step < n; step++) {
+        const double x1 = a + step*width;
+        const double x2 = a + (step+1)*width;
+
+        trapezoidal_integral += 0.5*(x2-x1)*(f(a, b, x1) + f(a, b, x2));
+    }
+
+    return trapezoidal_integral;
+}
+
+
+inline double windowFunction(double a, double b, double r, int n_step)
+{
+    if (r <= a)
+    {
+        return 0.0;
+    }
+    else if (r >= b)
+    {
+        return 1.0;
+    } else
+    {
+        return trapezoidalIntegral(a, b, r, n_step, &WindowBeta)/trapezoidalIntegral(a, b, b, n_step, &WindowBeta);
+    }
+}
+
+
+inline void MakeWindowField(LatticeComplex &field, double windowmin, double windowmax, int n_step)
+{
+    auto &env = Environment::getInstance();
+    GridBase *grid = field.Grid();
+    auto latt_size = grid->GlobalDimensions();
+
+    std::vector<int> shift(env.getNd(), 0);
+    int ri, rj, rk;
+    double r;
+    Complex buf; 
+    for (int i = 0; i < latt_size[0]; i++)
+    {
+        for (int j = 0; j < latt_size[1]; j++)
+        {
+            for (int k = 0; k < latt_size[2]; k++)
+            {
+                ri = std::min(i, latt_size[0] - i);
+                rj = std::min(j, latt_size[1] - j);
+                rk = std::min(k, latt_size[2] - k);
+                r = pow(ri*ri+rj*rj+rk*rk, 0.5);
+                shift = {i, j, k};
+                buf = windowFunction(windowmin, windowmax, r, n_step);
+                pokeSite(buf, field, shift);
+            }
+        }
+    }
+}
+
+
+inline double LaplaceTransform3D(LatticeComplex &field, std::vector<int> offset, int L)
+{
+    double q_fac = 2 * PI / L;
+    std::vector<double>
+    p_s = numpy.arange(L) * q_fac
+    assert len(offset) == dim
+
+    # prefactor = numpy.divide(1, 1 - numpy.exp(-p_s * L), out=numpy.zeros_like(p_s), where=p_s!=0)
+
+    result = numpy.zeros((L, ) * dim)
+
+    for d in range(dim):
+        x_s = (numpy.arange(L) + offset[d]) % L - offset[d]
+
+        comb = numpy.outer(p_s, x_s)
+}
+    return data
+
 
 template <class SinkSite, class SourceSite>
 std::vector<Complex> makeTwoPoint(const std::vector<SinkSite>   &sink,
