@@ -19,7 +19,7 @@ public:
     typedef std::pair<std::string, std::string> OpPair;
     GRID_SERIALIZABLE_CLASS_MEMBERS(FourierLaplacePar,
                                     std::vector<OpPair>, op,
-                                    std::string, output);
+                                    std::string, base_filename);
 };
 
 class FourierLaplaceResult: Serializable
@@ -28,7 +28,7 @@ public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(FourierLaplaceResult,
                                     std::string, sink,
                                     std::string, source,
-                                    std::vector<std::vector<Complex>>, data);
+                                    std::vector<std::vector<Complex>>, correlator_p);
 };
 
 template <typename SImpl>
@@ -104,112 +104,111 @@ void TFourierLaplace<SImpl>::setup(void)
     const unsigned int nd = env().getDim().size();
 
     envTmpLat(ComplexField, "ftBuf");
-    envTmpLat(ComplexField, "resultBuf");
-    envTmpLat(ComplexField, "resultConnectedBuf");
-    envTmpLat(ComplexField, "op2ShiftBuf");
-    envTmpLat(ComplexField, "windowField");
+    envTmpLat(ComplexField, "correlator_p");
+    envTmpLat(ComplexField, "Laplace_p");
+    envTmpLat(ComplexField, "Laplace_temp");
 }
 
 // execution ///////////////////////////////////////////////////////////////////
 template <typename SImpl>
 void TFourierLaplace<SImpl>::execute(void)
 {
-
     const unsigned int                           nd      = env().getNd();
     const unsigned int                           nt      = env().getDim().back();
     const unsigned int                           nop     = par().op.size();
     double                                       partVol = 1.;
-
+    const int                                    offset = 1;
     std::set<std::string>                        ops;
     std::vector<FourierLaplaceResult>            result;
     FFT                                          fft(envGetGrid(Field));
-    TComplex                                     buf1, buf2, wbuf1;
-    // std::vector<Complex>                         res(nt, 0.);
-    Complex                                      read_buf;
+    std::vector<int>                             site(nd, 0.);
+    std::complex<double>                         read_buf;
     std::vector<int>                             qt(nd,0);
-    Complex                                      bufZeroMode(0., 0.);
     int                                          L = nt;
-    double                                       r, window_value;
-    Coordinate                                   v_shift({0,0,0});
-
+    FourierLaplaceResult                         r;
+    std::string                                  traj = std::to_string(vm().getTrajectory());
+    std::ofstream                                myfile;
+    std::string                                  Laplace_file = par().base_filename + "_Laplace_p" + "." + traj;
+    std::string                                  Correlator_x_file = par().base_filename + "_correlator_x" + "." + traj;
+    std::string                                  Correlator_p_file = par().base_filename + "_correlator_p" + "." + traj;
 
     envGetTmp(ComplexField, ftBuf);
-    envGetTmp(ComplexField, resultBuf);
-    envGetTmp(ComplexField, resultConnectedBuf);
-    envGetTmp(ComplexField, op2ShiftBuf);
-    envGetTmp(ComplexField, windowField);
+    envGetTmp(ComplexField, correlator_p);
+    envGetTmp(ComplexField, Laplace_p);
+    envGetTmp(ComplexField, Laplace_temp);
 
-    for (auto &p : par().op)
-    {   
+    for (auto &p : par().op){   
+        r.sink    = p.first;
+        r.source  = p.second;
+
         LOG(Message) << "  <" << p.first << " " << p.second << ">" << std::endl;
-
-        //Remove mean of fields (improves tatistics?)
-        bufZeroMode = TensorRemove(sum(op1));
-        bufZeroMode = TensorRemove(sum(op2));
 
         auto &op1 = envGet(ComplexField, p.first);
         auto &op2 = envGet(ComplexField, p.second);
 
-        op1 = op1 - bufZeroMode / static_cast<double>(L * L * L);
-        op2 = op2 - bufZeroMode / static_cast<double>(L * L * L);
-
-        qt = {0, 0, 0};
-        peekSite(read_buf, op1, qt);
-        LOG(Message) << "At (0, 0, 0) we have a value of " << read_buf << " for Operator 1" << std::endl;
-        peekSite(read_buf, op2, qt);
-        LOG(Message) << "At (0, 0, 0) we have a value of " << read_buf << " for Operator 2" << std::endl;
-
-        qt = {0, 0, 1};
-        peekSite(read_buf, op1, qt);
-        LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << " for Operator 1" << std::endl;
-        peekSite(read_buf, op2, qt);
-        LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << "for Operator 2" << std::endl;
-
-        fft.FFT_all_dim(resultBuf, op1, FFT::forward);
+        fft.FFT_all_dim(correlator_p, op1, FFT::forward);
         fft.FFT_all_dim(ftBuf , op2, FFT::forward);
 
         // Calculate the momentum space value of the two-point function
-        resultBuf *= adj(ftBuf);
+        correlator_p *= adj(ftBuf);
 
-        qt = {0, 0, 0};
-        peekSite(read_buf, resultBuf, qt);
-        LOG(Message) << "At (0, 0, 0) we have a value of " << read_buf << " for result" << std::endl;
+        // Save two dimensions of this correlator
+        myfile.open(Correlator_p_file, std::ofstream::out | std::ofstream::trunc);
+        for (int i = 0; i < L; i++){
+            for (int j = 0; j < L - 1; j++){
+                site = {0, i, j};
+                peekSite(read_buf, correlator_p, site);
+                myfile << read_buf;
+                myfile << ",";
+            }
+            site = {0, i, L};
+            peekSite(read_buf, correlator_p, site);
+            myfile << read_buf;
+            myfile << "\n";
+        }
+        myfile.close();
 
-        qt = {0, 0, 1};
-        peekSite(read_buf, resultBuf, qt);
-        LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << " for result" << std::endl;
+        // qt = {0, 0, 1};
+        // peekSite(read_buf, correlator_p, qt);
+        // LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << " for result" << std::endl;
 
-        fft.FFT_all_dim(ftBuf, resultBuf, FFT::backward);
+        // This sets Laplace_p to the position space correlator temporarily
+        fft.FFT_all_dim(Laplace_p, correlator_p, FFT::backward);
 
-        ftBuf *= windowField;
+        // Save two dimensions of the position space correlator
+        myfile.open(Correlator_x_file, std::ofstream::out | std::ofstream::trunc);
+        for (int i = 0; i < L; i++){
+            for (int j = 0; j < L - 1; j++){
+                site = {0, i, j};
+                peekSite(read_buf, Laplace_p, site);
+                myfile << read_buf;
+                myfile << ",";
+            }
+            site = {0, i, L};
+            peekSite(read_buf, Laplace_p, site);
+            myfile << read_buf;
+            myfile << "\n";
+        }
+        myfile.close();
 
-        fft.FFT_all_dim(resultBuf, ftBuf, FFT::forward);
+        LaplaceTransform3D(Laplace_p, Laplace_temp, offset, L);
 
-        qt = {0, 0, 0};
-        peekSite(bufZeroMode, resultBuf, qt);
-        
-
-        LOG(Message) << "Saving result..." << std::endl;
-
-    //     FourierLaplaceResult r;
-    //     r.sink    = p.first;
-    //     r.source  = p.second;
-
-    //     for (int q1 = 0; q1 < L; q1++)
-    //     {    
-    //         for (int q2 = 0; q2 < L; q2++)
-    //         {
-    //             qt[2] = q2; 
-    //             peekSite(res[q2],resultBuf, qt);
-    //         }
-    //     }
-
-    //     r.data    = res;
-    //     result.push_back(r);
-
+        // Save two dimensions of the Laplace momentum space correlator
+        myfile.open(Laplace_file, std::ofstream::out | std::ofstream::trunc);
+        for (int i = 0; i < L; i++){
+            for (int j = 0; j < L - 1; j++){
+                site = {0, i, j};
+                peekSite(read_buf, Laplace_p, site);
+                myfile << read_buf;
+                myfile << ",";
+            }
+            site = {0, i, L};
+            peekSite(read_buf, Laplace_p, site);
+            myfile << read_buf;
+            myfile << "\n";
+        }
+        myfile.close();
     }
-
-    // saveResult(par().output, "twopt", result);
 }
 
 END_MODULE_NAMESPACE

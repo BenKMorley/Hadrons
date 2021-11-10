@@ -162,23 +162,89 @@ inline void MakeWindowField(LatticeComplex &field, double windowmin, double wind
 }
 
 
-inline double LaplaceTransform3D(LatticeComplex &field, std::vector<int> offset, int L)
-{
-    double q_fac = 2 * PI / L;
-    std::vector<double>
-    p_s = numpy.arange(L) * q_fac
-    assert len(offset) == dim
+inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, int offset, const int L){
+    std::vector<std::complex<double>>                        p_s(L, 0);
+    std::vector<std::complex<double>>                        x_s(L, 0);
+    int                                                      i;
+    int                                                      j;
+    int                                                      p;
+    int                                                      x;
+    int                                                      y;
+    int                                                      z;
+    int                                                      r;
+    int                                                      d;
+    auto&                                                    env = Environment::getInstance();
+    int                                                      nd = env.getNd();
+    std::vector<int>                                         qt(nd,0);
+    std::vector<int>                                         fetch(nd,0);
+    std::vector<int>                                         set(nd,0);
+    std::vector<std::vector<std::complex<double>>>           exp_comb(L);
+    std::complex<double>                                     sum;
+    std::complex<double>                                     fetch_buf;
 
-    # prefactor = numpy.divide(1, 1 - numpy.exp(-p_s * L), out=numpy.zeros_like(p_s), where=p_s!=0)
+    for (p = 0; p < L; p ++){
+        p_s[p] = (PI * 2 * p / L);
+    }
 
-    result = numpy.zeros((L, ) * dim)
+    for (x = 0; x < L - offset; x ++){
+        x_s[x] = x;
+    }
 
-    for d in range(dim):
-        x_s = (numpy.arange(L) + offset[d]) % L - offset[d]
+    for (x = L - offset; x < L; x ++){
+        x_s[x] = x - L;
+    }
 
-        comb = numpy.outer(p_s, x_s)
+    // Set up the exponant pre-factors to the Laplace Transform
+    for (i = 0; i < L ; i++) {
+        std::vector<std::complex<double>> e(L, 0);
+        exp_comb[i] = e;
+    }
+
+    thread_for(r, L * L, {
+        i = r / L;
+        j = r % L;
+        exp_comb[i][j] = exp(-p_s[i] * x_s[j]);
+    })
+
+    for (d = 0; d < 3; d++){
+        /* Vectorize x and y directions of the for loop */
+        thread_for(r, L * L, {
+            x = r / L;
+            y = r % L;
+
+            for (z = 0; z < L; z++){
+                /* Sum will count along the contracted index of the sum */
+                sum = 0;
+
+                for (i = 0; i < L; i++){
+                    fetch = {y, z, i};
+                    peekSite(fetch_buf, field, fetch);
+
+                    // Note that x, y and z here are just being used as indices
+                    sum += exp_comb[x][i] * fetch_buf;
+                }
+
+                /* Copy to the temp field */
+                set = {x, y, z};
+                pokeSite(sum, temp, set);
+            }
+        })
+        
+        /* Only after the loop has finished do we copy temp into field */
+        thread_for(r, L * L, {
+            x = r / L;
+            y = r % L;
+
+            for (z = 0; z < L; z++){
+                fetch = {x, y, z};
+                peekSite(fetch_buf, temp, fetch);
+                pokeSite(fetch_buf, field, fetch);
+            }
+        })
+    }
+
+    return 0;
 }
-    return data
 
 
 template <class SinkSite, class SourceSite>
