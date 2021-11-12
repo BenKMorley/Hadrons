@@ -128,9 +128,9 @@ void TFourierLaplace<SImpl>::execute(void)
     FourierLaplaceResult                         r;
     std::string                                  traj = std::to_string(vm().getTrajectory());
     std::ofstream                                myfile;
-    std::string                                  Laplace_file = par().base_filename + "_Laplace_p" + "." + traj;
-    std::string                                  Correlator_x_file = par().base_filename + "_correlator_x" + "." + traj;
-    std::string                                  Correlator_p_file = par().base_filename + "_correlator_p" + "." + traj;
+    std::string                                  Laplace_file;
+    std::string                                  Correlator_x_file;
+    std::string                                  Correlator_p_file;
 
     envGetTmp(ComplexField, ftBuf);
     envGetTmp(ComplexField, correlator_p);
@@ -153,59 +153,57 @@ void TFourierLaplace<SImpl>::execute(void)
         correlator_p *= adj(ftBuf);
 
         // Save two dimensions of this correlator
+        Correlator_p_file = par().base_filename + "_correlator_p_" + p.first + p.second + "." + traj + ".csv";
         myfile.open(Correlator_p_file, std::ofstream::out | std::ofstream::trunc);
         for (int i = 0; i < L; i++){
-            for (int j = 0; j < L - 1; j++){
+            for (int j = 0; j < L; j++){
                 site = {0, i, j};
                 peekSite(read_buf, correlator_p, site);
-                myfile << read_buf;
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
                 myfile << ",";
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                myfile << "\n";
             }
-            site = {0, i, L};
-            peekSite(read_buf, correlator_p, site);
-            myfile << read_buf;
-            myfile << "\n";
         }
         myfile.close();
 
         // qt = {0, 0, 1};
         // peekSite(read_buf, correlator_p, qt);
         // LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << " for result" << std::endl;
-
-        // This sets Laplace_p to the position space correlator temporarily
+        // the position space correlator temporarily
         fft.FFT_all_dim(Laplace_p, correlator_p, FFT::backward);
 
         // Save two dimensions of the position space correlator
+        Correlator_x_file = par().base_filename + "_correlator_x_" + p.first + p.second + "." + traj + ".csv";
         myfile.open(Correlator_x_file, std::ofstream::out | std::ofstream::trunc);
         for (int i = 0; i < L; i++){
-            for (int j = 0; j < L - 1; j++){
+            for (int j = 0; j < L; j++){
                 site = {0, i, j};
                 peekSite(read_buf, Laplace_p, site);
-                myfile << read_buf;
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
                 myfile << ",";
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                myfile << "\n";
             }
-            site = {0, i, L};
-            peekSite(read_buf, Laplace_p, site);
-            myfile << read_buf;
-            myfile << "\n";
         }
         myfile.close();
+
+        LOG(Message) << "Hello 1" << std::endl;
 
         LaplaceTransform3D(Laplace_p, Laplace_temp, offset, L);
 
         // Save two dimensions of the Laplace momentum space correlator
+        Laplace_file = par().base_filename + "_Laplace_p_" + p.first + p.second + "." + traj + ".csv";
         myfile.open(Laplace_file, std::ofstream::out | std::ofstream::trunc);
         for (int i = 0; i < L; i++){
-            for (int j = 0; j < L - 1; j++){
+            for (int j = 0; j < L; j++){
                 site = {0, i, j};
                 peekSite(read_buf, Laplace_p, site);
-                myfile << read_buf;
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
                 myfile << ",";
+                myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                myfile << "\n";
             }
-            site = {0, i, L};
-            peekSite(read_buf, Laplace_p, site);
-            myfile << read_buf;
-            myfile << "\n";
         }
         myfile.close();
     }

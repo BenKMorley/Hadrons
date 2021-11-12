@@ -176,9 +176,9 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
     auto&                                                    env = Environment::getInstance();
     int                                                      nd = env.getNd();
     std::vector<int>                                         qt(nd,0);
+    std::vector<std::vector<std::complex<double>>>           exp_comb(L);
     std::vector<int>                                         fetch(nd,0);
     std::vector<int>                                         set(nd,0);
-    std::vector<std::vector<std::complex<double>>>           exp_comb(L);
     std::complex<double>                                     sum;
     std::complex<double>                                     fetch_buf;
 
@@ -186,16 +186,16 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
         p_s[p] = (PI * 2 * p / L);
     }
 
-    for (x = 0; x < L - offset; x ++){
+    for (x = 0; x < L - offset; x++){
         x_s[x] = x;
     }
 
-    for (x = L - offset; x < L; x ++){
+    for (x = L - offset; x < L; x++){
         x_s[x] = x - L;
     }
 
     // Set up the exponant pre-factors to the Laplace Transform
-    for (i = 0; i < L ; i++) {
+    for (i = 0; i < L; i++) {
         std::vector<std::complex<double>> e(L, 0);
         exp_comb[i] = e;
     }
@@ -208,39 +208,93 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
 
     for (d = 0; d < 3; d++){
         /* Vectorize x and y directions of the for loop */
+        // for(r = 0; r < L * L; r ++){
         thread_for(r, L * L, {
-            x = r / L;
-            y = r % L;
+            // Each thread needs its own copy of these variables
+            std::vector<int>                                         fetch_thread(nd,0);
+            std::vector<int>                                         set_thread(nd,0);
+            std::complex<double>                                     fetch_buf_thread;
+            int                                                      i_thread = 0;
+            int                                                      j_thread = 0;
+            int                                                      x_thread = 0;
+            int                                                      y_thread = 0;
+            int                                                      z_thread = 0;
+            std::complex<double>                                     sum_thread = 0;
 
-            for (z = 0; z < L; z++){
+            y_thread = r / L;
+            z_thread = r % L;
+
+            for (x_thread = 0; x_thread < L; x_thread++){
                 /* Sum will count along the contracted index of the sum */
-                sum = 0;
+                sum_thread = 0;
 
-                for (i = 0; i < L; i++){
-                    fetch = {y, z, i};
-                    peekSite(fetch_buf, field, fetch);
+                for (i_thread = 0; i_thread < L; i_thread++){
+                    fetch_thread = {i_thread, x_thread, y_thread};
+                    peekSite(fetch_buf_thread, field, fetch_thread);
 
                     // Note that x, y and z here are just being used as indices
-                    sum += exp_comb[x][i] * fetch_buf;
+                    sum_thread += exp_comb[z_thread][i_thread] * fetch_buf_thread;
                 }
 
                 /* Copy to the temp field */
-                set = {x, y, z};
-                pokeSite(sum, temp, set);
+                set_thread = {x_thread, y_thread, z_thread};
+                pokeSite(sum_thread, temp, set_thread);
             }
         })
+    
+        // std::string Part_way_file="/mnt/drive2/Fourier-Laplace/data/g0.1/su2/L32/m2-0.031/config/FL/cosmhol-su2_L32_g0.1_m2-0.031-FL_part_way" + std::to_string(d) + ".csv";
+        // myfile.open(Part_way_file, std::ofstream::out | std::ofstream::trunc);
+        // for (int i = 0; i < L; i++){
+        //     for (int j = 0; j < L - 1; j++){
+        //         set = {0, i, j};
+        //         peekSite(fetch_buf, temp, set);
+        //         myfile << fetch_buf;
+        //         myfile << ",";
+        //     }
+        //     set = {0, i, L - 1};
+        //     peekSite(fetch_buf, temp, set);
+        //     myfile << fetch_buf;
+        //     myfile << "\n";
+        // }
+        // myfile.close();
         
         /* Only after the loop has finished do we copy temp into field */
         thread_for(r, L * L, {
-            x = r / L;
-            y = r % L;
+            // Each thread needs its own copy of these variables
+            std::vector<int>                                         fetch_thread(nd,0);
+            std::complex<double>                                     fetch_buf_thread;
+            int                                                      x_thread = 0;
+            int                                                      y_thread = 0;
+            int                                                      z_thread = 0;
 
-            for (z = 0; z < L; z++){
-                fetch = {x, y, z};
-                peekSite(fetch_buf, temp, fetch);
-                pokeSite(fetch_buf, field, fetch);
+            x_thread = r / L;
+            y_thread = r % L;
+
+            for (z_thread = 0; z_thread < L; z_thread++){
+                fetch_thread = {x_thread, y_thread, z_thread};
+                peekSite(fetch_buf_thread, temp, fetch_thread);
+                pokeSite(fetch_buf_thread, field, fetch_thread);
             }
         })
+
+        // std::string Part_wayB_file="/mnt/drive2/Fourier-Laplace/data/g0.1/su2/L32/m2-0.031/config/FL/cosmhol-su2_L32_g0.1_m2-0.031-FL_part_wayBB" + std::to_string(d) + ".csv";
+        // myfile.open(Part_wayB_file, std::ofstream::out | std::ofstream::trunc);
+        // for (int i = 0; i < L; i++){
+        //     for (int j = 0; j < L - 1; j++){
+        //         set = {0, i, j};
+        //         peekSite(fetch_buf, field, set);
+        //         myfile << fetch_buf;
+        //         myfile << ",";
+        //     }
+        //     set = {0, i, L - 1};
+        //     peekSite(fetch_buf, field, set);
+        //     myfile << fetch_buf;
+        //     myfile << "\n";
+        // }
+        // myfile.close();
+
+        LOG(Message) << "Hello 4" << std::endl;
+
     }
 
     return 0;
