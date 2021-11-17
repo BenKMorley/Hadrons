@@ -1,3 +1,4 @@
+bootstrap.sh
 Hadrons/Modules/MScalarSUN/PosSpaceRenorm.*
 /build*
 /.buildutils
