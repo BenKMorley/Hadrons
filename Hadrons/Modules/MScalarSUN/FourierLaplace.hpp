@@ -19,6 +19,8 @@ public:
     typedef std::pair<std::string, std::string> OpPair;
     GRID_SERIALIZABLE_CLASS_MEMBERS(FourierLaplacePar,
                                     std::vector<OpPair>, op,
+                                    std::string, save_type,
+                                    bool, debug,
                                     std::string, base_filename,
                                     std::string, base_dir);
 };
@@ -136,7 +138,6 @@ void TFourierLaplace<SImpl>::execute(void)
     std::string                                  Correlator_p_file;
     std::vector<std::vector<std::complex<double>>>  Output_vector(L);
 
-
     envGetTmp(ComplexField, ftBuf);
     envGetTmp(ComplexField, correlator_p);
     envGetTmp(ComplexField, Laplace_p);
@@ -148,9 +149,15 @@ void TFourierLaplace<SImpl>::execute(void)
         Output_vector[i] = e;
     }
 
-    for (auto &p : par().op){   
-        r.sink    = p.first;
-        r.source  = p.second;
+    for (auto &p : par().op){
+        if (par().save_type == "h5"){
+            r.sink    = p.first;
+            r.source  = p.second;
+        }
+
+        Correlator_p_file = par().base_dir + par().base_filename + "_correlator_p_" + p.first + p.second + "." + traj + ".csv";
+        Correlator_x_file = par().base_dir + par().base_filename + "_correlator_x_" + p.first + p.second + "." + traj + ".csv";
+        Laplace_file = par().base_dir + par().base_filename + "_Laplace_p_" + p.first + p.second + "." + traj + ".csv";
 
         LOG(Message) << "  <" << p.first << " " << p.second << ">" << std::endl;
 
@@ -163,85 +170,99 @@ void TFourierLaplace<SImpl>::execute(void)
         // Calculate the momentum space value of the two-point function
         correlator_p *= adj(ftBuf);
 
-        // Save two dimensions of this correlator
-        for (int i = 0; i < L; i++){
-            for (int j = 0; j < L; j++){
-                site = {0, i, j};
-                peekSite(read_buf, correlator_p, site);
-                Output_vector[i][j] = read_buf;
+        if (par().save_type == "h5"){
+            // Save two dimensions of this correlator
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, correlator_p, site);
+                    Output_vector[i][j] = read_buf;
+                }
             }
+
+            r.correlator_p = Output_vector;
         }
 
-        Correlator_p_file = par().base_dir + par().base_filename + "_correlator_p_" + p.first + p.second;
-        
-        // Start a writer in the appropriate directory
-        // ResultWriter writer();
-        LOG(Message) << "Saving in directory" << par().base_dir << std::endl;
+        if (par().save_type == "csv"){
+            myfile.open(Correlator_p_file, std::ofstream::out | std::ofstream::trunc);
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, correlator_p, site);
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
+                    myfile << ",";
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                    myfile << "\n";
+                }
+            }
+            myfile.close();
+        }
 
-        // Write out the 2D slice of the lattice
-        // write(writer, Correlator_p_file, Output_vector);
-        LOG(Message) << "Saving to file" << Correlator_p_file << std::endl;
-
-        r.sink    = p.first;
-        r.source  = p.second;
-        r.correlator_p = Output_vector;
-
-        result.push_back(r);
-
-        // myfile.open(Correlator_p_file, std::ofstream::out | std::ofstream::trunc);
-        // for (int i = 0; i < L; i++){
-        //     for (int j = 0; j < L; j++){
-        //         site = {0, i, j};
-        //         peekSite(read_buf, correlator_p, site);
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
-        //         myfile << ",";
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
-        //         myfile << "\n";
-        //     }
-        // }
-        // myfile.close();
-
-        // qt = {0, 0, 1};
-        // peekSite(read_buf, correlator_p, qt);
-        // LOG(Message) << "At (0, 0, 1) we have a value of " << read_buf << " for result" << std::endl;
-        // the position space correlator temporarily
         fft.FFT_all_dim(Laplace_p, correlator_p, FFT::backward);
 
-        // Save two dimensions of the position space correlator
-        // Correlator_x_file = par().base_filename + "_correlator_x_" + p.first + p.second + "." + traj + ".csv";
-        // myfile.open(Correlator_x_file, std::ofstream::out | std::ofstream::trunc);
-        // for (int i = 0; i < L; i++){
-        //     for (int j = 0; j < L; j++){
-        //         site = {0, i, j};
-        //         peekSite(read_buf, Laplace_p, site);
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
-        //         myfile << ",";
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
-        //         myfile << "\n";
-        //     }
-        // }
-        // myfile.close();
+        if (par().save_type == "h5"){
+            // Save two dimensions of the position space correlator
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, Laplace_p, site);
+                    Output_vector[i][j] = read_buf;
+                }
+            }
+            r.correlator_x = Output_vector;
+        }
 
-        LOG(Message) << "Hello 1" << std::endl;
+        if (par().save_type == "csv"){
+            myfile.open(Correlator_x_file , std::ofstream::out | std::ofstream::trunc);
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, Laplace_p, site);
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
+                    myfile << ",";
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                    myfile << "\n";
+                }
+            }
+            myfile.close();
+        }
 
-        LaplaceTransform3D(Laplace_p, Laplace_temp, offset, L);
+        LaplaceTransform3D(Laplace_p, Laplace_temp, offset, L, par().debug);
 
-        // Save two dimensions of the Laplace momentum space correlator
-        Laplace_file = par().base_filename + "_Laplace_p_" + p.first + p.second + "." + traj + ".csv";
-        // myfile.open(Laplace_file, std::ofstream::out | std::ofstream::trunc);
-        // for (int i = 0; i < L; i++){
-        //     for (int j = 0; j < L; j++){
-        //         site = {0, i, j};
-        //         peekSite(read_buf, Laplace_p, site);
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
-        //         myfile << ",";
-        //         myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
-        //         myfile << "\n";
-        //     }
-        // }
-        // myfile.close();
+        if (par().save_type == "h5"){
+            // Save two dimensions of the position space correlator
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, Laplace_p, site);
+                    Output_vector[i][j] = read_buf;
+                }
+            }
+
+            r.Laplace_p = Output_vector;
+            result.push_back(r);
+        }
+
+        if (par().save_type == "csv"){
+            myfile.open(Laplace_file, std::ofstream::out | std::ofstream::trunc);
+            for (int i = 0; i < L; i++){
+                for (int j = 0; j < L; j++){
+                    site = {0, i, j};
+                    peekSite(read_buf, Laplace_p, site);
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.real();
+                    myfile << ",";
+                    myfile << std::setprecision(std::numeric_limits<double>::digits10 + 1) << read_buf.imag();
+                    myfile << "\n";
+                }
+            }
+            myfile.close();
+        }
+
     }
-    saveResult(Correlator_p_file, "FL", result);
+
+    if (par().save_type == "h5"){
+        saveResult(par().base_dir + par().base_filename, "FL", result);
+    }
 }
 
 END_MODULE_NAMESPACE

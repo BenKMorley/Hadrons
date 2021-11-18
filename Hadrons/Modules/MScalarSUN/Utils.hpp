@@ -162,7 +162,7 @@ inline void MakeWindowField(LatticeComplex &field, double windowmin, double wind
 }
 
 
-inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, int offset, const int L){
+inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, int offset, const int L, bool debug){
     std::vector<std::complex<double>>                        p_s(L, 0);
     std::vector<std::complex<double>>                        x_s(L, 0);
     int                                                      i;
@@ -242,21 +242,15 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
             }
         })
     
-        // std::string Part_way_file="/mnt/drive2/Fourier-Laplace/data/g0.1/su2/L32/m2-0.031/config/FL/cosmhol-su2_L32_g0.1_m2-0.031-FL_part_way" + std::to_string(d) + ".csv";
-        // myfile.open(Part_way_file, std::ofstream::out | std::ofstream::trunc);
-        // for (int i = 0; i < L; i++){
-        //     for (int j = 0; j < L - 1; j++){
-        //         set = {0, i, j};
-        //         peekSite(fetch_buf, temp, set);
-        //         myfile << fetch_buf;
-        //         myfile << ",";
-        //     }
-        //     set = {0, i, L - 1};
-        //     peekSite(fetch_buf, temp, set);
-        //     myfile << fetch_buf;
-        //     myfile << "\n";
-        // }
-        // myfile.close();
+        if (debug == true){
+            LOG(Message) << "DEBUG 1" << std::endl;
+
+            for (int j = 0; j < L; j++){
+                set = {0, 0, j};
+                peekSite(fetch_buf, temp, set);
+                LOG(Message) << fetch_buf << std::endl;
+            }
+        }
         
         /* Only after the loop has finished do we copy temp into field */
         thread_for(r, L * L, {
@@ -277,24 +271,15 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
             }
         })
 
-        // std::string Part_wayB_file="/mnt/drive2/Fourier-Laplace/data/g0.1/su2/L32/m2-0.031/config/FL/cosmhol-su2_L32_g0.1_m2-0.031-FL_part_wayBB" + std::to_string(d) + ".csv";
-        // myfile.open(Part_wayB_file, std::ofstream::out | std::ofstream::trunc);
-        // for (int i = 0; i < L; i++){
-        //     for (int j = 0; j < L - 1; j++){
-        //         set = {0, i, j};
-        //         peekSite(fetch_buf, field, set);
-        //         myfile << fetch_buf;
-        //         myfile << ",";
-        //     }
-        //     set = {0, i, L - 1};
-        //     peekSite(fetch_buf, field, set);
-        //     myfile << fetch_buf;
-        //     myfile << "\n";
-        // }
-        // myfile.close();
+        if (debug == true){
+            LOG(Message) << "DEBUG 2" << std::endl;
 
-        LOG(Message) << "Hello 4" << std::endl;
-
+            for (int j = 0; j < L; j++){
+                set = {0, 0, j};
+                peekSite(fetch_buf, field, set);
+                LOG(Message) << fetch_buf << std::endl;
+            }
+        }
     }
 
     return 0;
