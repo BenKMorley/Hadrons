@@ -21,8 +21,7 @@ public:
                                     std::vector<OpPair>, op,
                                     std::string, save_type,
                                     bool, debug,
-                                    std::string, base_filename,
-                                    std::string, base_dir);
+                                    std::string, base_filename);
 };
 
 class FourierLaplaceResult: Serializable
@@ -155,9 +154,9 @@ void TFourierLaplace<SImpl>::execute(void)
             r.source  = p.second;
         }
 
-        Correlator_p_file = par().base_dir + par().base_filename + "_correlator_p_" + p.first + p.second + "." + traj + ".csv";
-        Correlator_x_file = par().base_dir + par().base_filename + "_correlator_x_" + p.first + p.second + "." + traj + ".csv";
-        Laplace_file = par().base_dir + par().base_filename + "_Laplace_p_" + p.first + p.second + "." + traj + ".csv";
+        Correlator_p_file = par().base_filename + "_correlator_p_" + p.first + p.second + "." + traj + ".csv";
+        Correlator_x_file = par().base_filename + "_correlator_x_" + p.first + p.second + "." + traj + ".csv";
+        Laplace_file = par().base_filename + "_Laplace_p_" + p.first + p.second + "." + traj + ".csv";
 
         LOG(Message) << "  <" << p.first << " " << p.second << ">" << std::endl;
 
@@ -261,7 +260,7 @@ void TFourierLaplace<SImpl>::execute(void)
     }
 
     if (par().save_type == "h5"){
-        saveResult(par().base_dir + par().base_filename, "FL", result);
+        saveResult(par().base_filename, "FL", result);
     }
 }
 
