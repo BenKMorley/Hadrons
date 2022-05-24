@@ -163,8 +163,8 @@ inline void MakeWindowField(LatticeComplex &field, double windowmin, double wind
 
 
 inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, int offset, const int L, bool debug){
-    std::vector<std::complex<double>>                        p_s(L, 0);
-    std::vector<std::complex<double>>                        x_s(L, 0);
+    std::vector<Complex>                        p_s(L, 0);
+    std::vector<Complex>                        x_s(L, 0);
     int                                                      i;
     int                                                      j;
     int                                                      p;
@@ -176,11 +176,11 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
     auto&                                                    env = Environment::getInstance();
     int                                                      nd = env.getNd();
     std::vector<int>                                         qt(nd,0);
-    std::vector<std::vector<std::complex<double>>>           exp_comb(L);
+    std::vector<std::vector<Complex>>           exp_comb(L);
     std::vector<int>                                         fetch(nd,0);
     std::vector<int>                                         set(nd,0);
-    std::complex<double>                                     sum;
-    std::complex<double>                                     fetch_buf;
+    Complex                                     sum;
+    Complex                                     fetch_buf;
 
     for (p = 0; p < L; p ++){
         p_s[p] = (PI * 2 * p / L);
@@ -196,7 +196,7 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
 
     // Set up the exponant pre-factors to the Laplace Transform
     for (i = 0; i < L; i++) {
-        std::vector<std::complex<double>> e(L, 0);
+        std::vector<Complex> e(L, 0);
         exp_comb[i] = e;
     }
 
@@ -213,13 +213,13 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
             // Each thread needs its own copy of these variables
             std::vector<int>                                         fetch_thread(nd,0);
             std::vector<int>                                         set_thread(nd,0);
-            std::complex<double>                                     fetch_buf_thread;
+            Complex                                     fetch_buf_thread;
             int                                                      i_thread = 0;
             int                                                      j_thread = 0;
             int                                                      x_thread = 0;
             int                                                      y_thread = 0;
             int                                                      z_thread = 0;
-            std::complex<double>                                     sum_thread = 0;
+            Complex                                     sum_thread = 0;
 
             y_thread = r / L;
             z_thread = r % L;
@@ -256,7 +256,7 @@ inline double LaplaceTransform3D(LatticeComplex &field, LatticeComplex &temp, in
         thread_for(r, L * L, {
             // Each thread needs its own copy of these variables
             std::vector<int>                                         fetch_thread(nd,0);
-            std::complex<double>                                     fetch_buf_thread;
+            Complex                                     fetch_buf_thread;
             int                                                      x_thread = 0;
             int                                                      y_thread = 0;
             int                                                      z_thread = 0;

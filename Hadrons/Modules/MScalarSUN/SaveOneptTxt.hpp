@@ -123,7 +123,7 @@ void TSaveOneptTxt<SImpl>::execute(void)
     const unsigned int                           traj    = vm().getTrajectory();
     std::string                                  op_string;
     FFT                                          fft(envGetGrid(Field));
-    std::complex<double>                         peek_buf   (0.0, 0.0);
+    Complex                         peek_buf   (0.0, 0.0);
     std::vector<int>                             site       (nd, 0);
 
     for (auto &op_string: par().Ops)

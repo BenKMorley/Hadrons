@@ -30,9 +30,9 @@ public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(FourierLaplaceResult,
                                     std::string, sink,
                                     std::string, source,
-                                    std::vector<std::vector<std::complex<double>>>, correlator_p,
-                                    std::vector<std::vector<std::complex<double>>>, correlator_x,
-                                    std::vector<std::vector<std::complex<double>>>, Laplace_p);
+                                    std::vector<std::vector<Complex>>, correlator_p,
+                                    std::vector<std::vector<Complex>>, correlator_x,
+                                    std::vector<std::vector<Complex>>, Laplace_p);
 };
 
 template <typename SImpl>
@@ -126,7 +126,7 @@ void TFourierLaplace<SImpl>::execute(void)
     std::vector<FourierLaplaceResult>            result;
     FFT                                          fft(envGetGrid(Field));
     std::vector<int>                             site(nd, 0.);
-    std::complex<double>                         read_buf;
+    Complex                         read_buf;
     std::vector<int>                             qt(nd,0);
     int                                          L = nt;
     FourierLaplaceResult                         r;
@@ -135,7 +135,7 @@ void TFourierLaplace<SImpl>::execute(void)
     std::string                                  Laplace_file;
     std::string                                  Correlator_x_file;
     std::string                                  Correlator_p_file;
-    std::vector<std::vector<std::complex<double>>>  Output_vector(L);
+    std::vector<std::vector<Complex>>  Output_vector(L);
 
     envGetTmp(ComplexField, ftBuf);
     envGetTmp(ComplexField, correlator_p);
@@ -144,7 +144,7 @@ void TFourierLaplace<SImpl>::execute(void)
 
     // This vector of vectors will be used to save the results into .h5 files
     for (int i = 0; i < L; i++) {
-        std::vector<std::complex<double>> e(L, 0);
+        std::vector<Complex> e(L, 0);
         Output_vector[i] = e;
     }
 
