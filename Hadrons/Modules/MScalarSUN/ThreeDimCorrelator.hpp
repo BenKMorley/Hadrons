@@ -33,10 +33,10 @@ public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(ThreeDimCorrelatorResult,
                                     std::string, sink,
                                     std::string, source,
-                                    std::vector<std::vector<std::complex<double>>>, correlator_p,
-                                    std::vector<std::vector<std::complex<double>>>, correlator_x,
-                                    std::vector<std::vector<std::complex<double>>>, Laplace_p,
-                                    std::vector<std::vector<std::vector<std::complex<double>>>>, P_FULL_3D);
+                                    std::vector<std::vector<Complex>>, correlator_p,
+                                    std::vector<std::vector<Complex>>, correlator_x,
+                                    std::vector<std::vector<Complex>>, Laplace_p,
+                                    std::vector<std::vector<std::vector<Complex>>>, P_FULL_3D);
 };
 
 template <typename SImpl>
@@ -130,7 +130,7 @@ void TThreeDimCorrelator<SImpl>::execute(void)
     std::vector<ThreeDimCorrelatorResult>        result;
     FFT                                          fft(envGetGrid(Field));
     std::vector<int>                             site(nd, 0.);
-    std::complex<double>                         read_buf;
+    Complex                                      read_buf;
     std::vector<int>                             qt(nd,0);
     int                                          L = nt;
     ThreeDimCorrelatorResult                     r;
@@ -140,9 +140,9 @@ void TThreeDimCorrelator<SImpl>::execute(void)
     std::string                                  Correlator_x_file;
     std::string                                  Correlator_p_file;
     const int                                    pn_max = par().qmax * L / (2 * PI);
-    std::vector<std::vector<std::complex<double>>>  Output_vector(L);
-    std::vector<std::vector<std::vector<std::complex<double>>>>  Output_3D(L);
-    std::vector<std::vector<std::complex<double>>>  Laplace_Output(pn_max);
+    std::vector<std::vector<Complex>>  Output_vector(L);
+    std::vector<std::vector<std::vector<Complex>>>  Output_3D(L);
+    std::vector<std::vector<Complex>>  Laplace_Output(pn_max);
     Complex                                      bufZeroMode(0., 0.);
 
     envGetTmp(ComplexField, ftBuf);
@@ -152,22 +152,22 @@ void TThreeDimCorrelator<SImpl>::execute(void)
 
     // This vector of vectors will be used to save the results into .h5 files
     for (int i = 0; i < L; i++) {
-        std::vector<std::complex<double>> e(L, 0);
+        std::vector<Complex> e(L, 0);
         Output_vector[i] = e;
     }
 
     for (int i = 0; i < L; i++) {
-        std::vector<std::vector<std::complex<double>>> e(L);
+        std::vector<std::vector<Complex>> e(L);
         Output_3D[i] = e;
 
         for (int j = 0; j < L; j++) {
-            std::vector<std::complex<double>> f(L, 0);
+            std::vector<Complex> f(L, 0);
             Output_3D[i][j] = f;
         }
     }
 
     for (int i = 0; i < pn_max; i++) {
-        std::vector<std::complex<double>> e(pn_max, 0);
+        std::vector<Complex> e(pn_max, 0);
         Laplace_Output[i] = e;
     }
 
